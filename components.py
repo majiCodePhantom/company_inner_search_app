@@ -161,9 +161,9 @@ def display_search_llm_response(llm_response):
         # ページ番号が取得できた場合のみ、ページ番号を表示（ドキュメントによっては取得できない場合がある）
         if "page" in llm_response["context"][0].metadata:
             # ページ番号を取得
-            main_page_number = llm_response["context"][0].metadata["page"]
+            page_number = llm_response["context"][0].metadata["page_number"]
             # 「メインドキュメントのファイルパス」と「ページ番号」を表示
-            st.success(f"{main_file_path}", icon=icon)
+            st.success(f"{main_file_path} p.{page_number}", icon=icon)
         else:
             # 「メインドキュメントのファイルパス」を表示
             st.success(f"{main_file_path}", icon=icon)
@@ -196,7 +196,7 @@ def display_search_llm_response(llm_response):
             # ページ番号が取得できない場合のための分岐処理
             if "page" in document.metadata:
                 # ページ番号を取得
-                sub_page_number = document.metadata["page"]
+                sub_page_number = document.metadata["page_number"]
                 # 「サブドキュメントのファイルパス」と「ページ番号」の辞書を作成
                 sub_choice = {"source": sub_file_path, "page_number": sub_page_number}
             else:
@@ -219,7 +219,7 @@ def display_search_llm_response(llm_response):
                 # ページ番号が取得できない場合のための分岐処理
                 if "page_number" in sub_choice:
                     # 「サブドキュメントのファイルパス」と「ページ番号」を表示
-                    st.info(f"{sub_choice['source']}", icon=icon)
+                    st.info(f"{sub_choice['source']} p.{sub_choice['page_number']}", icon=icon)
                 else:
                     # 「サブドキュメントのファイルパス」を表示
                     st.info(f"{sub_choice['source']}", icon=icon)
@@ -237,7 +237,7 @@ def display_search_llm_response(llm_response):
         content["main_file_path"] = main_file_path
         # メインドキュメントのページ番号は、取得できた場合にのみ追加
         if "page" in llm_response["context"][0].metadata:
-            content["main_page_number"] = main_page_number
+            content["page_number"] = page_number
         # サブドキュメントの情報は、取得できた場合にのみ追加
         if sub_choices:
             content["sub_message"] = sub_message
@@ -296,10 +296,10 @@ def display_contact_llm_response(llm_response):
 
             # ページ番号が取得できた場合のみ、ページ番号を表示（ドキュメントによっては取得できない場合がある）
             if "page" in document.metadata:
-                # ページ番号を取得
-                page_number = document.metadata["page"]
-                # 「ファイルパス」と「ページ番号」
-                file_info = f"{file_path}"
+                # ページ番号を取得###########################################3
+                page_number = document.metadata["page"] + 1
+                # 「ファイルパス」と「ページ番号」##############################
+                file_info = f"{file_path} p.{page_number}"
             else:
                 # 「ファイルパス」のみ
                 file_info = f"{file_path}"

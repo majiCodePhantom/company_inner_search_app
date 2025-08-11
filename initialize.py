@@ -148,31 +148,76 @@ def initialize_session_state():
         st.session_state.chat_history = []
 
 
+
+
+##############################################################################3
 def load_data_sources():
-    """
-    RAGの参照先となるデータソースの読み込み
-
-    Returns:
-        読み込んだ通常データソース
-    """
-    # データソースを格納する用のリスト
     docs_all = []
-    # ファイル読み込みの実行（渡した各リストにデータが格納される）
-    recursive_file_check(ct.RAG_TOP_FOLDER_PATH, docs_all)
 
-    web_docs_all = []
-    # ファイルとは別に、指定のWebページ内のデータも読み込み
-    # 読み込み対象のWebページ一覧に対して処理
+    # --- ローカルファイル ---
+    for root, _, files in os.walk(ct.RAG_TOP_FOLDER_PATH):
+        for file in files:
+            ext = os.path.splitext(file)[1].lower()
+            if ext not in ct.SUPPORTED_EXTENSIONS:
+                continue
+
+            file_path = os.path.join(root, file)
+            loader = ct.SUPPORTED_EXTENSIONS[ext](file_path)
+            docs = loader.load()
+
+            # ★ PDFだけページ番号を追加
+            if ext == ".pdf":
+                for i, d in enumerate(docs):
+                    d.metadata["page_number"] = int(d.metadata.get("page", i)) + 1
+
+            docs_all.extend(docs)
+
+    # --- Webページ ---
     for web_url in ct.WEB_URL_LOAD_TARGETS:
-        # 指定のWebページを読み込み
-        loader = WebBaseLoader(web_url)
-        web_docs = loader.load()
-        # for文の外のリストに読み込んだデータソースを追加
-        web_docs_all.extend(web_docs)
-    # 通常読み込みのデータソースにWebページのデータを追加
-    docs_all.extend(web_docs_all)
+        docs_all.extend(WebBaseLoader(web_url).load())
 
     return docs_all
+############################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# def load_data_sources():
+#     """
+#     RAGの参照先となるデータソースの読み込み
+
+#     Returns:
+#         読み込んだ通常データソース
+#     """
+#     # データソースを格納する用のリスト
+#     docs_all = []
+#     # ファイル読み込みの実行（渡した各リストにデータが格納される）
+#     recursive_file_check(ct.RAG_TOP_FOLDER_PATH, docs_all)
+
+#     web_docs_all = []
+#     # ファイルとは別に、指定のWebページ内のデータも読み込み
+#     # 読み込み対象のWebページ一覧に対して処理
+#     for web_url in ct.WEB_URL_LOAD_TARGETS:
+#         # 指定のWebページを読み込み
+#         loader = WebBaseLoader(web_url)
+#         web_docs = loader.load()
+#         # for文の外のリストに読み込んだデータソースを追加
+#         web_docs_all.extend(web_docs)
+#     # 通常読み込みのデータソースにWebページのデータを追加
+#     docs_all.extend(web_docs_all)
+
+#     return docs_all
 
 
 def recursive_file_check(path, docs_all):
