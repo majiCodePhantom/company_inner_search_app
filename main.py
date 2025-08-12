@@ -19,15 +19,24 @@ from initialize import initialize
 import components as cn
 # （自作）変数（定数）がまとめて定義・管理されているモジュール
 import constants as ct
-
+from initialize import initialize  # ← さっき差し替えたやつ
 
 ############################################################
 # 2. 設定関連
 ############################################################
 # ブラウザタブの表示文言を設定
-st.set_page_config(
-    page_title=ct.APP_NAME
-)
+# st.set_page_config(
+#     page_title=ct.APP_NAME
+# )
+
+
+st.set_page_config(page_title="My App")  # UIより先に
+load_dotenv()  # 環境変数も先に
+
+# ここで1回だけ初期化
+if "init_done" not in st.session_state:
+    initialize()                  # ← 例外はここでログ＋UI表示される
+    st.session_state.init_done = True
 
 # ログ出力を行うためのロガーの設定
 logger = logging.getLogger(ct.LOGGER_NAME)

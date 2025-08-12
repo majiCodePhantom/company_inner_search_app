@@ -13,12 +13,17 @@ import sys
 import unicodedata
 from dotenv import load_dotenv
 import streamlit as st
-from docx import Document
+import docx
+from langchain.schema import Document as LCdocument # for text-based documents
 from langchain_community.document_loaders import WebBaseLoader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 import constants as ct
+#pandas追加
+import pandas as pd
+
+
 
 ############################################################
 # 設定関連
@@ -32,17 +37,36 @@ load_dotenv()
 ############################################################
 
 def initialize():
-    """
-    画面読み込み時に実行する初期化処理
-    """
-    # 初期化データの用意
-    initialize_session_state()
-    # ログ出力用にセッションIDを生成
-    initialize_session_id()
-    # ログ出力の設定
-    initialize_logger()
-    # RAGのRetrieverを作成
-    initialize_retriever()
+ try:
+        initialize_session_state()
+        print("init: session_state OK")
+        initialize_session_id()
+        print("init: session_id OK")
+        initialize_logger()
+        print("init: logger OK")
+        initialize_retriever()
+        print("init: retriever OK")
+ except Exception as e:
+        # 本番でも必ず見えるところに出す（Streamlitのログ/コンソール）
+        import traceback, logging
+        logging.exception("initialize() failed: %s", e)
+        # 開発時だけUIにも
+        if os.getenv("APP_ENV","prod") != "prod":
+            st.sidebar.error("initialize() で例外発生")
+            st.sidebar.code("".join(traceback.format_exc()))
+        raise
+
+    # """
+    # 画面読み込み時に実行する初期化処理
+    # """
+    # # 初期化データの用意
+    # initialize_session_state()
+    # # ログ出力用にセッションIDを生成
+    # initialize_session_id()
+    # # ログ出力の設定
+    # initialize_logger()
+    # # RAGのRetrieverを作成
+    # initialize_retriever()
 
 
 def initialize_logger():
@@ -117,8 +141,8 @@ def initialize_retriever():
         for key in doc.metadata:
             doc.metadata[key] = adjust_string(doc.metadata[key])
     
-    # 埋め込みモデルの用意
-    embeddings = OpenAIEmbeddings()
+    # 埋め込みモデルの用意 モデル変えてみる
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
     
     # チャンク分割用のオブジェクトを作成
     text_splitter = CharacterTextSplitter(
@@ -134,7 +158,7 @@ def initialize_retriever():
     db = Chroma.from_documents(splitted_docs, embedding=embeddings)
 
     # ベクターストアを検索するRetrieverの作成
-    st.session_state.retriever = db.as_retriever(search_kwargs={"k": ct.DEFAULT_TOP_K})
+    st.session_state.retriever = db.as_retriever(search_kwargs={"k": ct.RETRIEVAL_FETCH_K})
 
 
 def initialize_session_state():
@@ -171,6 +195,28 @@ def load_data_sources():
                     d.metadata["page_number"] = int(d.metadata.get("page", i)) + 1
 
             docs_all.extend(docs)
+#########################################csvファイル精度向上対策#######################
+            if ext == ".csv":
+                # CSVファイルの場合、pandasで読み込み　デバッグ追加
+
+                log = logging.getLogger(ct.LOGGER_NAME)
+                
+                df = pd.read_csv(file_path, encoding="utf-8", dtype=str, keep_default_na=False)
+                df.columns = df.columns.str.strip()  # 前後空白除去
+                log.info("CSV columns (normalized) for %s: %s", file_path, list(df.columns))
+                # 各行をドキュメントとして扱う
+                for i, row in df.iterrows():
+                    text = f"社員ID: {row['社員ID']}, 氏名（フルネーム）: {row['氏名（フルネーム）']}, 性別: {row['性別']}, 生年月日: {row['生年月日']}, 年齢: {row['年齢']}, メールアドレス: {row['メールアドレス']}, 従業員区分: {row['従業員区分']}, 入社日: {row['入社日']}, 部署: {row['部署']}, 役職:{row['役職']}, スキルセット: {row['スキルセット']}, 保有資格: {row['保有資格']}, 大学名: {row['大学名']}, 学部・学科: {row['学部・学科']},卒業年月日: {row['卒業年月日']}"
+                    
+                    docs.append(LCdocument(
+                        page_content=text,
+                        metadata={"row_id": i, "source": file_path}
+                    ))
+                docs_all.extend(docs)
+                
+
+
+######################################################################
 
     # --- Webページ ---
     for web_url in ct.WEB_URL_LOAD_TARGETS:
